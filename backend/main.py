@@ -290,7 +290,8 @@ def generate_report(file_id: str):
 def cleanup_files(file_id: str):
     """Clean up all files associated with a file_id"""
     files_removed = []
-      # List of possible files to clean up
+    
+    # List of possible files to clean up
     file_patterns = [
         f"{file_id}.dcm",
         f"{file_id}.png",
