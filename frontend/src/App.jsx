@@ -422,6 +422,10 @@ function App() {
           ✅ {successMessage}
         </div>
       )}
+      {/* Footer */}
+      <footer className="app-footer">
+        © {new Date().getFullYear()} Dental DICOM Analyzer. Built by Krish Sharma.
+      </footer>
     </div>
   );
 }

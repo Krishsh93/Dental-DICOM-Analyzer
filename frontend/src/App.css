@@ -526,6 +526,27 @@ body {
   color: var(--text-muted);
 }
 
+/* App Footer */
+.app-footer {
+  width: 100%;
+  text-align: center;
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-top: 2.5rem;
+  padding: 1.2rem 0 0.7rem 0;
+  border-top: 1px solid #e5e7eb;
+  background: linear-gradient(90deg, #f8fafc 0%, #f1f5f9 100%);
+  letter-spacing: 0.01em;
+  box-shadow: 0 -2px 8px 0 rgba(0,0,0,0.03);
+}
+
+@media (max-width: 600px) {
+  .app-footer {
+    font-size: 0.85rem;
+    padding: 0.8rem 0 0.5rem 0;
+  }
+}
+
 /* Responsive Design */
 @media (max-width: 1200px) {
   .main-panel {
