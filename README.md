@@ -142,7 +142,7 @@ dental_dicom_analyzer/
 
 ## 🎬 Demo
 
-[Watch the demo video](placeholder-for-demo-video-link)
+[Watch the demo video](https://drive.google.com/file/d/1W7hPBOHlx_TzfP7jMQi-OSPN8qugSnID/view?usp=sharing)
 
 
 
