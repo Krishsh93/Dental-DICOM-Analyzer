@@ -290,8 +290,7 @@ def generate_report(file_id: str):
 def cleanup_files(file_id: str):
     """Clean up all files associated with a file_id"""
     files_removed = []
-    
-    # List of possible files to clean up
+      # List of possible files to clean up
     file_patterns = [
         f"{file_id}.dcm",
         f"{file_id}.png",
@@ -316,3 +315,9 @@ def cleanup_files(file_id: str):
         "message": f"Cleanup completed for file_id: {file_id}",
         "files_removed": files_removed
     }
+
+# For Railway deployment
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)
