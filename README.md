@@ -2,9 +2,9 @@
 
 A full-stack web application for dental X-ray DICOM analysis. This tool allows dentists and radiologists to upload dental X-ray DICOM images, automatically detect pathologies using AI, and generate clinical diagnostic reports.
 
-![Dental DICOM Analyzer Dashboard](./screenshot/ss2.png.png)
-![Pathology Detection](./screenshot/image.png.png)
-![Diagnostic Report](./screenshot/ss1.png.png)
+![Dental DICOM Analyzer Dashboard](./screenshot/ss2.png)
+![Pathology Detection](./screenshot/image.png)
+![Diagnostic Report](./screenshot/ss1.png)
 
 ## 🚀 Features
 - Upload and view dental X-ray DICOM images (.dcm, .rvg)
