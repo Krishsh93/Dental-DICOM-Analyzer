@@ -1,5 +1,9 @@
 fastapi
 uvicorn
-pydicom
 python-multipart
+pydicom
+Pillow
+numpy
 requests
+groq
+python-dotenv

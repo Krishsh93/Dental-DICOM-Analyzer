@@ -2,7 +2,9 @@
 
 A full-stack web application for dental X-ray DICOM analysis. This tool allows dentists and radiologists to upload dental X-ray DICOM images, automatically detect pathologies using AI, and generate clinical diagnostic reports.
 
-![Dental DICOM Analyzer Dashboard](placeholder-for-ui-screenshot.png)
+![Dental DICOM Analyzer Dashboard](./screenshot/ss2.png.png)
+![Pathology Detection](./screenshot/image.png.png)
+![Diagnostic Report](./screenshot/ss1.png.png)
 
 ## 🚀 Features
 - Upload and view dental X-ray DICOM images (.dcm, .rvg)
@@ -133,35 +135,15 @@ dental_dicom_analyzer/
 
 ## 📋 API Endpoints
 - `GET /` - Health check
-- `POST /upload` - Upload DICOM file and convert to viewable format
-- `GET /image/{file_id}` - Get converted image
-- `POST /predict?file_id={file_id}` - Detect pathologies using Roboflow
-- `POST /report?file_id={file_id}` - Generate diagnostic report using LLM
-
-## 🖼️ Screenshots
-
-![Dashboard View](placeholder-for-dashboard-screenshot.png)
-![Pathology Detection](placeholder-for-detection-screenshot.png)
-![Diagnostic Report](placeholder-for-report-screenshot.png)
+- `POST /upload/` - Upload DICOM file and convert to viewable format
+- `GET /file/{filename}` - Get converted image
+- `POST /predict/?file_id={file_id}` - Detect pathologies using Roboflow
+- `POST /report/?file_id={file_id}` - Generate diagnostic report using LLM
 
 ## 🎬 Demo
 
 [Watch the demo video](placeholder-for-demo-video-link)
 
-## 🚀 VS Code Tasks
-This project includes VS Code tasks for easy development:
-- `Start Frontend (Vite)`: Starts the React frontend
-- `Start Backend (FastAPI)`: Starts the FastAPI server
 
-## 🔮 Future Improvements
-- Docker containerization for easy deployment
-- Support for multiple file uploads
-- Enhanced visualization options for different dental views
-- User authentication and report history
-- Batch processing for multiple images
 
-## 👨‍💻 Authors
-- Data Science Intern @ Dobbe AI (May 2025)
 
-## 📄 License
-This project is licensed under the MIT License - see the LICENSE file for details.
