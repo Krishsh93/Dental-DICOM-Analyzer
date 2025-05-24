@@ -1,3 +1,4 @@
+[🌐 Live Project](https://dental-dicom-analyzer.netlify.app/)
 # Dental DICOM Analyzer
 
 A full-stack web application for dental X-ray DICOM analysis. This tool allows dentists and radiologists to upload dental X-ray DICOM images, automatically detect pathologies using AI, and generate clinical diagnostic reports.
