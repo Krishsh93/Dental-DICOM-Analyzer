@@ -1,9 +1,14 @@
 fastapi
 uvicorn
 python-multipart
-pydicom
-Pillow
-numpy
+pydicom[all]>=2.4.0
+Pillow>=9.0.0
+numpy>=1.21.0
 requests
 groq
 python-dotenv
+gdcm>=3.0.10
+pylibjpeg>=2.0
+pylibjpeg-libjpeg>=2.1
+pylibjpeg-openjpeg>=2.0
+pylibjpeg-rle>=2.0

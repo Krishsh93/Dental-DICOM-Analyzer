@@ -86,40 +86,115 @@ def health_check():
     }
 
 def dicom_to_png(dicom_path, png_path):
-    """Convert DICOM file to PNG with proper error handling"""
+    """Convert DICOM file to PNG with comprehensive error handling and fallbacks"""
     try:
-        ds = pydicom.dcmread(dicom_path)
+        # First, try to read with pydicom
+        ds = pydicom.dcmread(dicom_path, force=True)
         
-        # Handle different DICOM formats
-        if hasattr(ds, 'pixel_array'):
+        # Check if pixel data exists
+        if not hasattr(ds, 'pixel_array'):
+            raise ValueError("DICOM file does not contain pixel data")
+        
+        try:
+            # Try to get pixel array directly
             arr = ds.pixel_array
+        except Exception as pixel_error:
+            print(f"Direct pixel array access failed: {pixel_error}")
             
-            # Apply VOI LUT if available
+            # Try with different decompression approaches
+            try:
+                # Force decompression
+                ds.decompress()
+                arr = ds.pixel_array
+            except Exception as decomp_error:
+                print(f"Decompression failed: {decomp_error}")
+                
+                # Try reading without decompression
+                try:
+                    # Read raw pixel data and attempt manual conversion
+                    if hasattr(ds, 'PixelData'):
+                        # This is a very basic fallback - might not work for all formats
+                        pixel_data = ds.PixelData
+                        if len(pixel_data) > 0:
+                            # Try to interpret as raw bytes
+                            rows = getattr(ds, 'Rows', 512)
+                            cols = getattr(ds, 'Columns', 512)
+                            expected_size = rows * cols
+                            
+                            if len(pixel_data) >= expected_size:
+                                arr = np.frombuffer(pixel_data[:expected_size], dtype=np.uint8)
+                                arr = arr.reshape(rows, cols)
+                            else:
+                                raise ValueError(f"Pixel data size mismatch: expected {expected_size}, got {len(pixel_data)}")
+                        else:
+                            raise ValueError("Empty pixel data")
+                    else:
+                        raise ValueError("No pixel data found in DICOM")
+                except Exception as raw_error:
+                    raise Exception(f"All decompression methods failed. Original error: {pixel_error}. "
+                                  f"Decompression error: {decomp_error}. Raw data error: {raw_error}. "
+                                  f"This DICOM file may use an unsupported compression format. "
+                                  f"Required dependencies: gdcm>=3.0.10, pylibjpeg>=2.0, pylibjpeg-libjpeg>=2.1")
+        
+        # Apply VOI LUT if available for proper windowing
+        try:
             if hasattr(ds, 'VOILUTSequence') or hasattr(ds, 'WindowCenter'):
                 arr = apply_voi_lut(arr, ds)
-            
-            # Normalize to 0-255 range
-            arr = arr.astype(float)
-            arr_min, arr_max = arr.min(), arr.max()
-            if arr_max > arr_min:
-                arr = (arr - arr_min) / (arr_max - arr_min) * 255.0
-            else:
-                arr = np.zeros_like(arr)
-            
-            arr = np.uint8(arr)
-            
-            # Create image
-            img = Image.fromarray(arr)
-            if img.mode != "L":
-                img = img.convert("L")
-            
-            img.save(png_path)
-            return png_path
+        except Exception as voi_error:
+            print(f"VOI LUT application failed, continuing with raw data: {voi_error}")
+        
+        # Ensure we have a valid array
+        if arr is None or arr.size == 0:
+            raise ValueError("Resulting pixel array is empty")
+        
+        # Handle different array dimensions
+        if len(arr.shape) > 2:
+            # Take the first frame if it's a multi-frame image
+            arr = arr[0] if arr.shape[0] < arr.shape[-1] else arr[:, :, 0]
+        
+        # Normalize to 0-255 range
+        arr = arr.astype(float)
+        arr_min, arr_max = arr.min(), arr.max()
+        
+        if arr_max > arr_min:
+            arr = (arr - arr_min) / (arr_max - arr_min) * 255.0
         else:
-            raise ValueError("DICOM file does not contain pixel data")
-            
+            # Handle case where all pixels have the same value
+            arr = np.full_like(arr, 128.0)  # Set to middle gray
+        
+        arr = np.uint8(np.clip(arr, 0, 255))
+        
+        # Create and save image
+        img = Image.fromarray(arr)
+        if img.mode != "L":
+            img = img.convert("L")
+        
+        # Ensure the image has reasonable dimensions
+        if img.size[0] < 10 or img.size[1] < 10:
+            raise ValueError(f"Resulting image is too small: {img.size}")
+        
+        img.save(png_path, "PNG")
+        return png_path
+        
     except Exception as e:
-        raise Exception(f"Failed to convert DICOM to PNG: {str(e)}")
+        error_msg = str(e)
+        
+        # Provide helpful error messages for common issues
+        if "requires gdcm" in error_msg or "requires pylibjpeg" in error_msg:
+            detailed_error = (
+                f"DICOM decompression failed: {error_msg}. "
+                f"This DICOM file uses a compressed format that requires additional dependencies. "
+                f"Please ensure the server has gdcm>=3.0.10, pylibjpeg>=2.0, and pylibjpeg-libjpeg>=2.1 installed."
+            )
+        elif "JPEG Lossless" in error_msg:
+            detailed_error = (
+                f"JPEG Lossless compression not supported: {error_msg}. "
+                f"This DICOM file uses JPEG Lossless compression which requires gdcm or pylibjpeg libraries."
+            )
+        else:
+            detailed_error = f"DICOM processing error: {error_msg}"
+        
+        raise Exception(detailed_error)
 
 @app.post("/upload/")
 async def upload_dicom(file: UploadFile = File(...)):
