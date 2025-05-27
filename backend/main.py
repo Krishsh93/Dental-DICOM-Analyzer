@@ -12,24 +12,6 @@ import requests
 import json
 from dotenv import load_dotenv
 
-# Check for optional DICOM decompression libraries
-GDCM_AVAILABLE = False
-PYLIBJPEG_AVAILABLE = False
-
-try:
-    import gdcm
-    GDCM_AVAILABLE = True
-    print("✓ GDCM library available for DICOM decompression")
-except ImportError:
-    print("⚠ GDCM library not available")
-
-try:
-    import pylibjpeg
-    PYLIBJPEG_AVAILABLE = True
-    print("✓ PyLibJPEG library available for DICOM decompression")
-except ImportError:
-    print("⚠ PyLibJPEG library not available")
-
 # --- CONFIG ---
 load_dotenv()
 
@@ -105,137 +87,44 @@ def health_check():
 
 def dicom_to_png(dicom_path, png_path):
     """Convert DICOM file to PNG with comprehensive error handling and fallbacks"""
-    
-    # Log available decompression libraries
-    print(f"DICOM Processing - GDCM Available: {GDCM_AVAILABLE}, PyLibJPEG Available: {PYLIBJPEG_AVAILABLE}")
-    
     try:
-        # First, try to read with pydicom
         ds = pydicom.dcmread(dicom_path, force=True)
-        
-        # Check if pixel data exists
         if not hasattr(ds, 'pixel_array'):
             raise ValueError("DICOM file does not contain pixel data")
-        
-        # Log transfer syntax for debugging
-        transfer_syntax = getattr(ds, 'file_meta', {}).get('TransferSyntaxUID', 'Unknown')
-        print(f"DICOM Transfer Syntax: {transfer_syntax}")
-        
         try:
-            # Try to get pixel array directly
             arr = ds.pixel_array
-            print("✓ Direct pixel array access successful")
         except Exception as pixel_error:
-            print(f"Direct pixel array access failed: {pixel_error}")
-            
-            # Try with different decompression approaches
             try:
-                # If PyLibJPEG is available, configure it explicitly
-                if PYLIBJPEG_AVAILABLE:
-                    print("Attempting decompression with PyLibJPEG...")
-                    # Configure pydicom to use pylibjpeg
-                    pydicom.config.pixel_data_handlers = ['pylibjpeg', 'pillow', 'numpy']
-                
-                # Force decompression
                 ds.decompress()
                 arr = ds.pixel_array
-                print("✓ Decompression successful")
             except Exception as decomp_error:
-                print(f"Decompression failed: {decomp_error}")
-                
-                # Last resort: try reading raw pixel data
-                try:
-                    if hasattr(ds, 'PixelData'):
-                        print("Attempting raw pixel data interpretation...")
-                        pixel_data = ds.PixelData
-                        if len(pixel_data) > 0:
-                            # Try to interpret as raw bytes
-                            rows = getattr(ds, 'Rows', 512)
-                            cols = getattr(ds, 'Columns', 512)
-                            bits_allocated = getattr(ds, 'BitsAllocated', 8)
-                            
-                            # Determine data type based on bits allocated
-                            if bits_allocated <= 8:
-                                dtype = np.uint8
-                                bytes_per_pixel = 1
-                            else:
-                                dtype = np.uint16
-                                bytes_per_pixel = 2
-                            
-                            expected_size = rows * cols * bytes_per_pixel
-                            
-                            if len(pixel_data) >= expected_size:
-                                arr = np.frombuffer(pixel_data[:expected_size], dtype=dtype)
-                                arr = arr.reshape(rows, cols)
-                                print("✓ Raw pixel data interpretation successful")
-                            else:
-                                raise ValueError(f"Pixel data size mismatch: expected {expected_size}, got {len(pixel_data)}")
-                        else:
-                            raise ValueError("Empty pixel data")
-                    else:
-                        raise ValueError("No pixel data found in DICOM")
-                        
-                except Exception as raw_error:
-                    # Provide detailed error with library status
-                    error_details = [
-                        f"All decompression methods failed.",
-                        f"Original error: {pixel_error}",
-                        f"Decompression error: {decomp_error}",
-                        f"Raw data error: {raw_error}",
-                        f"Transfer Syntax: {transfer_syntax}",
-                        f"Available libraries - GDCM: {GDCM_AVAILABLE}, PyLibJPEG: {PYLIBJPEG_AVAILABLE}"
-                    ]
-                    
-                    if not PYLIBJPEG_AVAILABLE:
-                        error_details.append("RECOMMENDATION: Install pylibjpeg libraries for compressed DICOM support")
-                    
-                    raise Exception(" | ".join(error_details))
-        
-        # Apply VOI LUT if available for proper windowing
+                raise Exception(f"DICOM decompression failed: {pixel_error} | {decomp_error}")
         try:
             if hasattr(ds, 'VOILUTSequence') or hasattr(ds, 'WindowCenter'):
                 arr = apply_voi_lut(arr, ds)
-        except Exception as voi_error:
-            print(f"VOI LUT application failed, continuing with raw data: {voi_error}")
-        
-        # Ensure we have a valid array
+        except Exception:
+            pass
         if arr is None or arr.size == 0:
             raise ValueError("Resulting pixel array is empty")
-        
-        # Handle different array dimensions
         if len(arr.shape) > 2:
-            # Take the first frame if it's a multi-frame image
             arr = arr[0] if arr.shape[0] < arr.shape[-1] else arr[:, :, 0]
-        
-        # Normalize to 0-255 range
         arr = arr.astype(float)
         arr_min, arr_max = arr.min(), arr.max()
-        
         if arr_max > arr_min:
             arr = (arr - arr_min) / (arr_max - arr_min) * 255.0
         else:
-            # Handle case where all pixels have the same value
-            arr = np.full_like(arr, 128.0)  # Set to middle gray
-        
+            arr = np.full_like(arr, 128.0)
         arr = np.uint8(np.clip(arr, 0, 255))
-        
-        # Create and save image
         img = Image.fromarray(arr)
         if img.mode != "L":
             img = img.convert("L")
-        
-        # Ensure the image has reasonable dimensions
         if img.size[0] < 10 or img.size[1] < 10:
             raise ValueError(f"Resulting image is too small: {img.size}")
-        
         img.save(png_path, "PNG")
         return png_path
-        
     except Exception as e:
         error_msg = str(e)
-        
-        # Provide helpful error messages for common issues
-        if "requires gdcm" in error_msg or "requires pylibjpeg" in error_msg:
+        if "requires pylibjpeg" in error_msg:
             detailed_error = (
                 f"DICOM decompression failed: {error_msg}. "
                 f"This DICOM file uses a compressed format that requires additional dependencies. "
@@ -248,7 +137,6 @@ def dicom_to_png(dicom_path, png_path):
             )
         else:
             detailed_error = f"DICOM processing error: {error_msg}"
-        
         raise Exception(detailed_error)
 
 @app.post("/upload/")
